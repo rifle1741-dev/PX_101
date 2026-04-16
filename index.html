@@ -63,11 +63,11 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:#0a0a0a;color:
   clip-path: polygon(
     0% 0%, 100% 0%, 100% 100%, 0% 100%,
     0% 0%,
-    calc(50% - 130px) calc(50% - 65px),
-    calc(50% - 130px) calc(50% + 65px),
-    calc(50% + 130px) calc(50% + 65px),
-    calc(50% + 130px) calc(50% - 65px),
-    calc(50% - 130px) calc(50% - 65px)
+    calc(50% - 150px) calc(50% - 90px),
+    calc(50% - 150px) calc(50% + 90px),
+    calc(50% + 150px) calc(50% + 90px),
+    calc(50% + 150px) calc(50% - 90px),
+    calc(50% - 150px) calc(50% - 90px)
   );
 }
 .scan-frame{
@@ -287,32 +287,27 @@ function setHeight(){
   document.getElementById('camWrap').style.height = h + 'px';
 }
 
+var BOX_W = 300;
+var BOX_H = 180;
 function startScanner(){
   scanner = new Html5Qrcode('reader', { verbose: false });
 
   var config = {
     fps: 30,
-
-    // 🔥 ขยายกรอบให้ใหญ่ + สูงขึ้น (อ่าน barcode ง่ายขึ้น)
-    qrbox: function(w, h){
-      var width = Math.min(w * 0.9, 340);
-      return {
-        width: width,
-        height: width * 0.6
-      };
+  
+    qrbox: {
+      width: BOX_W,
+      height: BOX_H
     },
-
-    // 🔥 fix ratio ให้กล้องนิ่งขึ้น
+  
     aspectRatio: 1.777,
-
-    // 🔥 ลด format = เร็วขึ้นเยอะ
+  
     formatsToSupport: [
       Html5QrcodeSupportedFormats.EAN_13,
       Html5QrcodeSupportedFormats.EAN_8,
       Html5QrcodeSupportedFormats.CODE_128
     ],
-
-    // 🔥 ใช้ native detector ถ้ามี
+  
     experimentalFeatures: {
       useBarCodeDetectorIfSupported: true
     }
