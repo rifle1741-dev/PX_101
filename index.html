@@ -86,11 +86,20 @@ window.addEventListener('load', function(){
 
 function sendResult(code){
   document.getElementById('statusText').textContent = '✅ ' + code;
-  // เขียนลง localStorage แทน postMessage
   var sid = params.get('sid') || 'px_scan';
+
+  // วิธี 1: BroadcastChannel (ทำงานข้าม tab/window same-origin ไม่ได้ — แต่ลองไว้)
+  try{
+    var bc = new BroadcastChannel(sid);
+    bc.postMessage({ barcode: code });
+    setTimeout(function(){ bc.close(); }, 200);
+  } catch(e){}
+
+  // วิธี 2: localStorage fallback
   try{
     localStorage.setItem(sid, JSON.stringify({ barcode: code, ts: Date.now() }));
   } catch(e){}
+
   setTimeout(function(){ window.close(); }, 400);
 }
 
