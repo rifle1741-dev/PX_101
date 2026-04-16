@@ -87,14 +87,14 @@ window.addEventListener('load', function(){
 function sendResult(code){
   document.getElementById('statusText').textContent = '✅ ' + code;
   if(window.opener){
-    window.opener.postMessage({ barcode: code }, ORIGIN);
+    window.opener.postMessage({ barcode: code }, '*');
   }
   setTimeout(function(){ window.close(); }, 400);
 }
 
 function closeMe(){
   if(reader) try{ reader.reset(); }catch(e){}
-  if(window.opener) window.opener.postMessage({ barcode: null }, ORIGIN);
+  if(window.opener) window.opener.postMessage({ barcode: null }, '*');
   window.close();
 }
 </script>
