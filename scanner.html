@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Scanner</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:#000; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; }
+#video { width:100%; flex:1; object-fit:cover; display:block; }
+.aim { position:fixed; top:50%; left:50%; transform:translate(-50%,-60%);
+  width:240px; height:120px; pointer-events:none; }
+.aim::before,.aim::after { content:''; position:absolute; width:28px; height:28px;
+  border-color:#4ade80; border-style:solid; }
+.aim::before { top:0; left:0; border-width:3px 0 0 3px; }
+.aim::after  { top:0; right:0; border-width:3px 3px 0 0; }
+.aim-b::before,.aim-b::after { content:''; position:absolute; width:28px; height:28px;
+  border-color:#4ade80; border-style:solid; }
+.aim-b::before { bottom:0; left:0; border-width:0 0 3px 3px; }
+.aim-b::after  { bottom:0; right:0; border-width:0 3px 3px 0; }
+.aim-b { position:fixed; top:50%; left:50%; transform:translate(-50%,-60%);
+  width:240px; height:120px; pointer-events:none; }
+.status { padding:14px 16px; background:rgba(0,0,0,.7); font-size:13px;
+  display:flex; align-items:center; justify-content:space-between; }
+.flash { position:fixed; inset:0; background:#4ade80;
+  opacity:0; pointer-events:none; transition:opacity .08s; }
+.btn-close { background:rgba(255,255,255,.15); border:none; color:#fff;
+  border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; }
+</style>
+</head>
+<body>
+<video id="video" playsinline muted autoplay></video>
+<div class="aim"></div>
+<div class="aim-b"></div>
+<div class="flash" id="flash"></div>
+<div class="status">
+  <span id="statusText">⏳ กำลังเริ่มกล้อง...</span>
+  <button class="btn-close" onclick="closeMe()">ยกเลิก</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+var reader = null;
+var done   = false;
+var ORIGIN = '*'; // จะรับค่าจาก ?origin=
+
+// รับ origin จาก URL param เพื่อความปลอดภัย
+var params = new URLSearchParams(location.search);
+if(params.get('origin')) ORIGIN = decodeURIComponent(params.get('origin'));
+
+window.addEventListener('load', function(){
+  var ZXingLib = (typeof ZXing !== 'undefined') ? ZXing : null;
+  if(!ZXingLib){ document.getElementById('statusText').textContent = '❌ โหลด ZXing ไม่สำเร็จ'; return; }
+
+  var hints = new Map();
+  hints.set(ZXingLib.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXingLib.BarcodeFormat.EAN_13,
+    ZXingLib.BarcodeFormat.EAN_8,
+    ZXingLib.BarcodeFormat.CODE_128,
+    ZXingLib.BarcodeFormat.CODE_39,
+    ZXingLib.BarcodeFormat.QR_CODE
+  ]);
+  hints.set(ZXingLib.DecodeHintType.TRY_HARDER, true);
+
+  reader = new ZXingLib.BrowserMultiFormatReader(hints);
+  reader.decodeFromConstraints(
+    { video: { facingMode: 'environment' } },
+    document.getElementById('video'),
+    function(result, err){
+      if(result && !done){
+        done = true;
+        // flash
+        var f = document.getElementById('flash');
+        f.style.opacity = '.6';
+        setTimeout(function(){ f.style.opacity = '0'; }, 150);
+        // ส่งกลับ
+        sendResult(result.getText());
+      }
+    }
+  ).then(function(){
+    document.getElementById('statusText').textContent = '✅ พร้อมสแกน — จ่อบาร์โค้ด';
+  }).catch(function(e){
+    document.getElementById('statusText').textContent = '❌ เข้าถึงกล้องไม่ได้';
+  });
+});
+
+function sendResult(code){
+  document.getElementById('statusText').textContent = '✅ ' + code;
+  if(window.opener){
+    window.opener.postMessage({ barcode: code }, ORIGIN);
+  }
+  setTimeout(function(){ window.close(); }, 400);
+}
+
+function closeMe(){
+  if(reader) try{ reader.reset(); }catch(e){}
+  if(window.opener) window.opener.postMessage({ barcode: null }, ORIGIN);
+  window.close();
+}
+</script>
+</body>
+</html>
