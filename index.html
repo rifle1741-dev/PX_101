@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8"/>
@@ -291,7 +291,7 @@ function startScanner(){
   scanner = new Html5Qrcode('reader', { verbose: false });
 
   var config = {
-    fps: 15,
+    fps: 30,
     qrbox: function(w, h){
       var s = Math.min(w, h) * 0.7;
       return { width: Math.min(s, 260), height: Math.min(s * 0.5, 130) };
@@ -404,99 +404,5 @@ function setStatus(msg, type){
   dot.className = 'status-dot' + (type === 'warn' ? ' warn' : type === 'err' ? ' err' : '');
 }
 </script>
-</body>
-</html> -->
-
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>สแกนบาร์โค้ด</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-
-<style>
-body{margin:0;background:#000;color:#fff;font-family:sans-serif}
-#reader{width:100%}
-.status{padding:10px;font-size:14px}
-</style>
-</head>
-<body>
-
-<div id="reader"></div>
-<div class="status" id="status">กำลังเริ่ม...</div>
-
-<script>
-let scanner;
-let cooldown = false;
-
-function setStatus(msg){
-  document.getElementById("status").textContent = msg;
-}
-
-function startScanner(){
-  scanner = new Html5Qrcode("reader");
-
-  const config = {
-    fps: 30,
-
-    qrbox: function(w, h){
-      let width = Math.min(w * 0.95, 360);
-      return {
-        width: width,
-        height: width * 0.7
-      };
-    },
-
-    aspectRatio: 1.777,
-
-    formatsToSupport: [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.CODE_128
-    ],
-
-    experimentalFeatures: {
-      useBarCodeDetectorIfSupported: true
-    }
-  };
-
-  scanner.start(
-    {
-      facingMode: "environment",
-      // advanced: [{ focusMode: "continuous" }]
-    },
-    config,
-    onScanSuccess,
-    () => {}
-  )
-  .then(() => setStatus("พร้อมสแกน"))
-  .catch(err => setStatus("เปิดกล้องไม่ได้: " + err));
-}
-
-function onScanSuccess(code){
-  if(cooldown) return;
-  cooldown = true;
-
-  setStatus("พบ: " + code);
-  console.log("BARCODE:", code);
-
-  // ส่งไป parent (ถ้ามี)
-  const payload = { type: "BARCODE", barcode: code };
-  if(window.opener){
-    try{ window.opener.postMessage(payload, "*"); }catch(e){}
-  }
-  if(window.parent){
-    try{ window.parent.postMessage(payload, "*"); }catch(e){}
-  }
-
-  setTimeout(() => {
-    cooldown = false;
-  }, 1500);
-}
-
-window.addEventListener("load", startScanner);
-</script>
-
 </body>
 </html>
