@@ -86,15 +86,20 @@ window.addEventListener('load', function(){
 
 function sendResult(code){
   document.getElementById('statusText').textContent = '✅ ' + code;
-  if(window.opener){
-    window.opener.postMessage({ barcode: code }, '*');
+  // ส่งหา parent (iframe) แทน opener (popup)
+  var target = window.opener || window.parent;
+  if(target && target !== window){
+    target.postMessage({ barcode: code }, '*');
   }
   setTimeout(function(){ window.close(); }, 400);
 }
 
 function closeMe(){
   if(reader) try{ reader.reset(); }catch(e){}
-  if(window.opener) window.opener.postMessage({ barcode: null }, '*');
+  var target = window.opener || window.parent;
+  if(target && target !== window){
+    target.postMessage({ barcode: null }, '*');
+  }
   window.close();
 }
 </script>
