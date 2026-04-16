@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8"/>
@@ -114,6 +114,416 @@ function closeMe(){
   try{ window.opener.postMessage({ barcode: null }, '*'); }catch(e){}
   try{ window.opener.top.postMessage({ barcode: null }, '*'); }catch(e){}
   window.close();
+}
+</script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>สแกนบาร์โค้ด</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Sarabun',sans-serif;background:#0a0a0a;color:#fff;overflow:hidden}
+
+/* ── Header ── */
+.header{
+  padding:14px 16px;
+  background:rgba(0,0,0,.6);
+  backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  position:relative;z-index:10;
+}
+.header-title{
+  font-family:'Chakra Petch',sans-serif;
+  font-size:15px;font-weight:700;color:#fff;
+}
+.close-btn{
+  width:34px;height:34px;border-radius:9px;
+  background:rgba(255,255,255,.12);border:none;
+  color:#fff;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.close-btn:active{background:rgba(255,255,255,.22);}
+
+/* ── Camera ── */
+#reader{
+  width:100%;
+  background:#000;
+}
+#reader video{
+  width:100% !important;
+  height:auto !important;
+  object-fit:cover;
+  display:block;
+}
+
+/* ── Override html5-qrcode UI ── */
+#reader__scan_region{position:relative;}
+#reader__scan_region img{display:none !important;}
+#reader__dashboard{display:none !important;}
+#reader__header_message{display:none !important;}
+
+/* ── Scan overlay ── */
+.scan-overlay{
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  pointer-events:none;
+  z-index:5;
+}
+.scan-shade{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.5);
+  /* เจาะกลาง */
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% 100%, 0% 100%,
+    0% 0%,
+    calc(50% - 130px) calc(50% - 65px),
+    calc(50% - 130px) calc(50% + 65px),
+    calc(50% + 130px) calc(50% + 65px),
+    calc(50% + 130px) calc(50% - 65px),
+    calc(50% - 130px) calc(50% - 65px)
+  );
+}
+.scan-frame{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:260px;height:130px;
+}
+.scan-corner{
+  position:absolute;
+  width:22px;height:22px;
+  border-color:#4ade80;
+  border-style:solid;
+}
+.scan-corner.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+.scan-corner.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+.scan-corner.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+.scan-corner.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+
+.scan-line{
+  position:absolute;
+  left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,transparent 0%,#4ade80 30%,#4ade80 70%,transparent 100%);
+  animation:scanline 2s ease-in-out infinite;
+  top:50%;
+}
+@keyframes scanline{
+  0%  {top:4px;  opacity:.8;}
+  50% {top:calc(100% - 4px); opacity:1;}
+  100%{top:4px;  opacity:.8;}
+}
+
+.scan-label{
+  position:absolute;
+  bottom:-28px;left:50%;transform:translateX(-50%);
+  font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;
+}
+
+/* ── Flash ── */
+.flash{
+  position:fixed;inset:0;
+  background:#4ade80;
+  opacity:0;pointer-events:none;
+  z-index:999;
+  transition:opacity .06s;
+}
+
+/* ── Status bar ── */
+.status-bar{
+  padding:12px 16px;
+  background:rgba(0,0,0,.7);
+  backdrop-filter:blur(8px);
+  border-top:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;gap:10px;
+  min-height:52px;
+}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:#4ade80;flex-shrink:0;
+  box-shadow:0 0 0 3px rgba(74,222,128,.2);
+  animation:blink 1.8s ease-in-out infinite;
+}
+.status-dot.warn{background:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.2);}
+.status-dot.err {background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.2);animation:none;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.status-text{font-size:13px;color:rgba(255,255,255,.85);flex:1;line-height:1.4;}
+
+/* ── Result card ── */
+.result-card{
+  display:none;
+  margin:12px 16px;
+  background:rgba(74,222,128,.12);
+  border:1px solid rgba(74,222,128,.3);
+  border-radius:12px;
+  padding:12px 14px;
+  display:none;
+  align-items:center;gap:12px;
+}
+.result-card.show{display:flex;}
+.result-icon{
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(74,222,128,.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.result-code{font-family:'Chakra Petch',sans-serif;font-size:15px;font-weight:700;color:#4ade80;}
+.result-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+
+/* ── Manual input ── */
+.manual-wrap{
+  padding:10px 16px 16px;
+  display:flex;gap:8px;
+}
+.manual-inp{
+  flex:1;padding:10px 13px;
+  border-radius:10px;
+  border:1.5px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);
+  color:#fff;font-family:'Sarabun',sans-serif;font-size:14px;
+  outline:none;
+  transition:border-color .15s;
+}
+.manual-inp:focus{border-color:#4ade80;}
+.manual-inp::placeholder{color:rgba(255,255,255,.3);}
+.manual-btn{
+  padding:10px 16px;border-radius:10px;
+  background:#4ade80;border:none;
+  color:#0a0a0a;font-family:'Sarabun',sans-serif;
+  font-size:14px;font-weight:700;
+  cursor:pointer;white-space:nowrap;
+  transition:opacity .15s;
+}
+.manual-btn:active{opacity:.8;}
+
+/* ── Loading ── */
+.loading-wrap{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:48px 20px;gap:14px;
+}
+.spinner{
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.15);
+  border-top-color:#4ade80;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:rgba(255,255,255,.5);}
+
+/* ── Camera container sizing ── */
+.cam-wrap{
+  position:relative;
+  width:100%;
+  background:#000;
+  overflow:hidden;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-title">&#x1F4F7; สแกนบาร์โค้ด</span>
+  <button class="close-btn" onclick="doClose()">&#10005;</button>
+</div>
+
+<div class="cam-wrap" id="camWrap">
+  <div id="reader"></div>
+  <div class="scan-overlay" id="scanOverlay" style="display:none">
+    <div class="scan-shade"></div>
+    <div class="scan-frame">
+      <div class="scan-corner tl"></div>
+      <div class="scan-corner tr"></div>
+      <div class="scan-corner bl"></div>
+      <div class="scan-corner br"></div>
+      <div class="scan-line"></div>
+      <div class="scan-label">จ่อบาร์โค้ดที่กรอบสีเขียว</div>
+    </div>
+  </div>
+  <div class="loading-wrap" id="loadingWrap">
+    <div class="spinner"></div>
+    <div class="loading-text">กำลังเริ่มกล้อง...</div>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<div class="status-bar">
+  <div class="status-dot" id="statusDot"></div>
+  <div class="status-text" id="statusText">กำลังเริ่มต้น...</div>
+</div>
+
+<div class="result-card" id="resultCard">
+  <div class="result-icon">&#10003;</div>
+  <div>
+    <div class="result-code" id="resultCode"></div>
+    <div class="result-sub">ส่งผลกลับแล้ว — กำลังปิด...</div>
+  </div>
+</div>
+
+<div class="manual-wrap">
+  <input class="manual-inp" id="manualInp" type="text"
+    placeholder="พิมพ์บาร์โค้ดด้วยตนเอง..."
+    autocomplete="off" autocorrect="off" spellcheck="false"/>
+  <button class="manual-btn" onclick="submitManual()">ยืนยัน</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+/* ─── Config ─── */
+var PARENT_ORIGIN = '*';
+var cooldown      = false;
+var scanner       = null;
+
+/* ─── รับ origin จาก query string ─── */
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var o = params.get('origin');
+  if(o) PARENT_ORIGIN = decodeURIComponent(o);
+})();
+
+/* ─── เริ่ม Scanner ─── */
+window.addEventListener('load', function(){
+  setHeight();
+  startScanner();
+});
+
+window.addEventListener('resize', setHeight);
+
+function setHeight(){
+  /* ให้ cam-wrap ใช้พื้นที่เหลือ */
+  var used = document.querySelector('.header').offsetHeight
+           + document.querySelector('.status-bar').offsetHeight
+           + document.querySelector('.manual-wrap').offsetHeight
+           + 56; /* result card + padding */
+  var h = Math.max(180, window.innerHeight - used);
+  document.getElementById('camWrap').style.height = h + 'px';
+}
+
+function startScanner(){
+  scanner = new Html5Qrcode('reader', { verbose: false });
+
+  var config = {
+    fps: 15,
+    qrbox: function(w, h){
+      var s = Math.min(w, h) * 0.7;
+      return { width: Math.min(s, 260), height: Math.min(s * 0.5, 130) };
+    },
+    aspectRatio: window.innerHeight / window.innerWidth,
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.DATA_MATRIX
+    ]
+  };
+
+  scanner.start(
+    { facingMode: 'environment' },
+    config,
+    onScanSuccess,
+    onScanFail
+  )
+  .then(function(){
+    document.getElementById('loadingWrap').style.display = 'none';
+    document.getElementById('scanOverlay').style.display = 'block';
+    setStatus('พร้อมสแกน', 'ok');
+  })
+  .catch(function(err){
+    document.getElementById('loadingWrap').innerHTML =
+      '<div style="text-align:center;padding:20px">' +
+      '<div style="font-size:36px;margin-bottom:12px">&#128247;</div>' +
+      '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6">' +
+      'ไม่สามารถเข้าถึงกล้องได้<br>' +
+      '<span style="font-size:11px;opacity:.5">'+String(err)+'</span></div>' +
+      '<div style="margin-top:14px;font-size:12px;color:rgba(255,255,255,.4)">ใช้ช่องพิมพ์ด้านล่างแทนได้</div>' +
+      '</div>';
+    setStatus('ไม่สามารถเข้าถึงกล้อง', 'err');
+  });
+}
+
+/* ─── สแกนสำเร็จ ─── */
+function onScanSuccess(code){
+  if(cooldown) return;
+  cooldown = true;
+
+  /* Flash */
+  var f = document.getElementById('flash');
+  f.style.opacity = '0.5';
+  setTimeout(function(){ f.style.opacity = '0'; }, 120);
+
+  /* แสดงผล */
+  setStatus('พบ: ' + code, 'ok');
+  var rc = document.getElementById('resultCard');
+  document.getElementById('resultCode').textContent = code;
+  rc.classList.add('show');
+
+  /* ส่งกลับ parent */
+  sendBarcode(code);
+
+  /* ปิดหน้าต่าง */
+  setTimeout(function(){
+    doClose();
+  }, 900);
+}
+
+function onScanFail(){ /* ทุก frame ที่ยังไม่เจอ — ไม่ต้องทำอะไร */ }
+
+/* ─── ส่งผลไปยัง parent ─── */
+function sendBarcode(code){
+  var payload = { type: 'BARCODE', barcode: code, code: code };
+  /* วิธีที่ 1: postMessage ไปยัง opener */
+  if(window.opener && !window.opener.closed){
+    try{ window.opener.postMessage(payload, PARENT_ORIGIN); }catch(e){}
+  }
+  /* วิธีที่ 2: postMessage ไปยัง parent (กรณี iframe) */
+  if(window.parent && window.parent !== window){
+    try{ window.parent.postMessage(payload, PARENT_ORIGIN); }catch(e){}
+  }
+}
+
+/* ─── Manual input ─── */
+document.getElementById('manualInp').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') submitManual();
+});
+
+function submitManual(){
+  var code = document.getElementById('manualInp').value.trim();
+  if(!code){ document.getElementById('manualInp').focus(); return; }
+  sendBarcode(code);
+  setStatus('ส่งค่าแล้ว: ' + code, 'ok');
+  var rc = document.getElementById('resultCard');
+  document.getElementById('resultCode').textContent = code;
+  rc.classList.add('show');
+  setTimeout(doClose, 900);
+}
+
+/* ─── ปิด ─── */
+function doClose(){
+  if(scanner){
+    scanner.stop().then(function(){ window.close(); }).catch(function(){ window.close(); });
+  } else {
+    window.close();
+  }
+}
+
+/* ─── Status helper ─── */
+function setStatus(msg, type){
+  document.getElementById('statusText').textContent = msg;
+  var dot = document.getElementById('statusDot');
+  dot.className = 'status-dot' + (type === 'warn' ? ' warn' : type === 'err' ? ' err' : '');
 }
 </script>
 </body>
